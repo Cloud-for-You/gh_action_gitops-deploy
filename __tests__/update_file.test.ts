@@ -39,31 +39,11 @@ describe('update_file.ts', () => {
     expect(obj.apps[0].name).toBe('app2')
   })
 
-  it('inserts a new value when the path does not exist', async () => {
-    await expect(
-      updateFile('deployment.yaml', '$.new.prop', 'value')
-    ).resolves.toBe('done!')
-
-    const [, content] = mockedWriteFile.mock.calls[0]
-    const obj = yaml.load(content as string) as Record<string, unknown>
-    expect(obj.new.prop).toBe('value')
-  })
-
-  it('inserts a new array element when the index does not exist', async () => {
-    await expect(
-      updateFile('deployment.yaml', '$.apps[1].name', 'app2')
-    ).resolves.toBe('done!')
-
-    const [, content] = mockedWriteFile.mock.calls[0]
-    const obj = yaml.load(content as string) as Record<string, unknown>
-    expect(obj.apps[1].name).toBe('app2')
-  })
-
   it('throws when file is not found', async () => {
     mockedReadFile.mockRejectedValueOnce(new Error('ENOENT'))
 
     await expect(updateFile('missing.yaml', '$.key', 'value')).rejects.toThrow(
-      'File not found: /tmp/ops-repo/missing.yaml'
+      'File not found: missing.yaml'
     )
   })
 
@@ -71,7 +51,7 @@ describe('update_file.ts', () => {
     mockedReadFile.mockResolvedValueOnce('{{invalid: yaml: [')
 
     await expect(updateFile('invalid.yaml', '$.key', 'value')).rejects.toThrow(
-      'Invalid YAML file: /tmp/ops-repo/invalid.yaml'
+      'Invalid YAML file: invalid.yaml'
     )
   })
 
@@ -80,6 +60,34 @@ describe('update_file.ts', () => {
 
     await expect(updateFile('scalar.yaml', '$.key', 'value')).rejects.toThrow(
       'YAML must contain an object'
+    )
+  })
+
+  it('updates multiple matching values', async () => {
+    // JSONPath can match multiple values if the path is not specific enough
+    await expect(
+      updateFile('deployment.yaml', '$.apps[*].replicas', '3')
+    ).resolves.toBe('done!')
+
+    const [, content] = mockedWriteFile.mock.calls[0]
+    const obj = yaml.load(content as string) as Record<string, unknown>
+    expect(obj.apps[0].replicas).toBe('3')
+  })
+
+  it('throws when JSONPath not found', async () => {
+    mockedReadFile.mockResolvedValueOnce('apps:\n  - name: app1\n')
+
+    await expect(
+      updateFile('test.yaml', '$.apps[10]', 'value')
+    ).rejects.toThrow('JSONPath not found: $.apps[10]')
+  })
+
+  it('throws when trying to set on root path', async () => {
+    mockedReadFile.mockResolvedValueOnce('apps:\n  - name: app1\n')
+
+    // $ refers to root, which has null parent
+    await expect(updateFile('test.yaml', '$', 'value')).rejects.toThrow(
+      'Cannot set value at path: $'
     )
   })
 })

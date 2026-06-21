@@ -9,12 +9,16 @@ import { jest } from '@jest/globals'
 import * as core from '../__fixtures__/core.js'
 import { gitClone } from '../__fixtures__/git_clone.js'
 import { gitPush } from '../__fixtures__/git_push.js'
+import { gitCreatePr } from '../__fixtures__/git_create_pr.js'
 import { updateFile } from '../__fixtures__/update_file.js'
 
 // Mocks should be declared before the module being tested is imported.
 jest.unstable_mockModule('@actions/core', () => core)
 jest.unstable_mockModule('../src/git_clone.js', () => ({ gitClone: gitClone }))
 jest.unstable_mockModule('../src/git_push.js', () => ({ gitPush: gitPush }))
+jest.unstable_mockModule('../src/git_create_pr.js', () => ({
+  gitCreatePr: gitCreatePr
+}))
 jest.unstable_mockModule('../src/update_file.js', () => ({
   updateFile: updateFile
 }))
@@ -31,6 +35,7 @@ describe('main.ts', () => {
     // Mock the gitClone, gitPush and updateFile functions so they do not actually execute.
     gitClone.mockImplementation(() => Promise.resolve('done!'))
     gitPush.mockImplementation(() => Promise.resolve('done!'))
+    gitCreatePr.mockImplementation(() => Promise.resolve('done! PR #1 created'))
     updateFile.mockImplementation(() => Promise.resolve('done!'))
   })
 
@@ -66,7 +71,40 @@ describe('main.ts', () => {
 
     await run()
 
-    expect(gitPush).toHaveBeenCalledWith('/tmp/ops', 'Update deployment.yaml')
+    expect(gitPush).toHaveBeenCalledWith(
+      '/tmp/ops',
+      'https://github.com/owner/ops.git',
+      'Update deployment.yaml',
+      'token'
+    )
+  })
+
+  it('creates pull request when pull_request is enabled', async () => {
+    core.getInput
+      .mockReset()
+      .mockReturnValueOnce('owner/ops')
+      .mockReturnValueOnce('main')
+      .mockReturnValueOnce('/tmp/ops')
+      .mockReturnValueOnce('token')
+      .mockReturnValueOnce('deployment.yaml')
+      .mockReturnValueOnce('$.image.tag')
+      .mockReturnValueOnce('v1.2.3')
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce('false')
+      .mockReturnValueOnce('true')
+
+    await run()
+
+    expect(gitCreatePr).toHaveBeenCalledWith(
+      '/tmp/ops',
+      'owner/ops',
+      'main',
+      'token',
+      undefined,
+      'deployment.yaml',
+      'v1.2.3',
+      '$.image.tag'
+    )
   })
 
   it('Sets a failed status', async () => {

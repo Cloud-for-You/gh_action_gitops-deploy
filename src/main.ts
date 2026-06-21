@@ -1,6 +1,7 @@
 import * as core from '@actions/core'
 import { gitClone } from './git_clone.js'
 import { gitPush } from './git_push.js'
+import { gitCreatePr } from './git_create_pr.js'
 import { updateFile } from './update_file.js'
 
 /**
@@ -45,7 +46,16 @@ export async function run(): Promise<void> {
       await gitPush(path, repositoryUrl, `Update ${deploymentFile}`, token)
     } else if (core.getInput('pull_request') === 'true') {
       core.info('Pull request creation is enabled.')
-      // Implement pull request creation logic here
+      await gitCreatePr(
+        path,
+        repository,
+        ref,
+        token,
+        githubEnterpriseUrl || undefined,
+        deploymentFile,
+        value,
+        jsonpath
+      )
     } else {
       core.debug('Neither direct push nor pull request creation is enabled.')
     }

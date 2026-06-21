@@ -8,23 +8,48 @@ const { gitClone } = await import('../src/git_clone.js')
 const { spawn } = await import('child_process')
 
 const mockedSpawn = jest.mocked(spawn)
+type ChildProcess = ReturnType<typeof spawn>
 
-const createChild = (code: number | null): ReturnType<typeof spawn> =>
-  ({
+const createChild = (
+  code: number | null,
+  stdout = '',
+  stderr = ''
+): ChildProcess => {
+  const stdoutEmitter = {
+    on: jest.fn(
+      (_event: string, callback: (chunk: Buffer | string) => void) => {
+        if (_event === 'data') {
+          callback(stdout)
+        }
+      }
+    )
+  }
+  const stderrEmitter = {
+    on: jest.fn(
+      (_event: string, callback: (chunk: Buffer | string) => void) => {
+        if (_event === 'data') {
+          callback(stderr)
+        }
+      }
+    )
+  }
+  const child = {
+    stdout: stdoutEmitter,
+    stderr: stderrEmitter,
     on: jest.fn((_event: string, callback: (code?: number | null) => void) => {
       if (_event === 'close') {
         callback(code)
       }
-      return child
     })
-  }) as unknown as ReturnType<typeof spawn>
+  } as unknown as ChildProcess
+
+  return child
+}
 
 describe('git_clone.ts', () => {
-  const child = createChild(0)
-
   beforeEach(() => {
     jest.clearAllMocks()
-    mockedSpawn.mockReturnValue(child)
+    mockedSpawn.mockReturnValue(createChild(0))
   })
 
   it('clones a repository to the destination', async () => {
@@ -33,14 +58,17 @@ describe('git_clone.ts', () => {
         'https://github.com/octocat/hello-world.git',
         '/tmp/repo',
         undefined,
-        undefined
+        undefined as unknown as string
       )
     ).resolves.toBe('done!')
 
     expect(mockedSpawn).toHaveBeenCalledWith(
       'git',
       ['clone', 'https://github.com/octocat/hello-world.git', '/tmp/repo'],
-      { stdio: 'inherit' }
+      {
+        cwd: process.cwd(),
+        stdio: ['ignore', 'pipe', 'pipe']
+      }
     )
   })
 
@@ -49,7 +77,7 @@ describe('git_clone.ts', () => {
       'https://github.com/octocat/hello-world.git',
       '/tmp/repo',
       'main',
-      undefined
+      undefined as unknown as string
     )
 
     expect(mockedSpawn).toHaveBeenCalledWith(
@@ -61,7 +89,10 @@ describe('git_clone.ts', () => {
         'https://github.com/octocat/hello-world.git',
         '/tmp/repo'
       ],
-      { stdio: 'inherit' }
+      {
+        cwd: process.cwd(),
+        stdio: ['ignore', 'pipe', 'pipe']
+      }
     )
   })
 
@@ -77,10 +108,13 @@ describe('git_clone.ts', () => {
       'git',
       [
         'clone',
-        'https://ghp_token@github.com/octocat/hello-world.git',
+        'https://x-access-token:ghp_token@github.com/octocat/hello-world.git',
         '/tmp/repo'
       ],
-      { stdio: 'inherit' }
+      {
+        cwd: process.cwd(),
+        stdio: ['ignore', 'pipe', 'pipe']
+      }
     )
   })
 
@@ -92,9 +126,11 @@ describe('git_clone.ts', () => {
         'https://github.com/octocat/hello-world.git',
         '/tmp/repo',
         undefined,
-        undefined
+        undefined as unknown as string
       )
-    ).rejects.toThrow('git exited with code 128')
+    ).rejects.toThrow(
+      'git clone https://github.com/octocat/hello-world.git /tmp/repo exited with code 128'
+    )
   })
 
   it('rejects when spawning git fails', async () => {
@@ -107,7 +143,7 @@ describe('git_clone.ts', () => {
         'https://github.com/octocat/hello-world.git',
         '/tmp/repo',
         undefined,
-        undefined
+        undefined as unknown as string
       )
     ).rejects.toThrow('spawn failed')
   })

@@ -4,7 +4,7 @@ jest.unstable_mockModule('child_process', () => ({
   spawn: jest.fn()
 }))
 
-const { gitPush } = await import('../src/git_push.js')
+const { gitCreatePr } = await import('../src/git_create_pr.js')
 const { spawn } = await import('child_process')
 
 const mockedSpawn = jest.mocked(spawn)
@@ -46,20 +46,38 @@ const createChild = (
   return child
 }
 
-describe('git_push.ts', () => {
+const mockFetch = (data: unknown, ok = true) =>
+  jest.fn(() =>
+    Promise.resolve({
+      ok,
+      status: ok ? 201 : 400,
+      statusText: ok ? 'Created' : 'Bad Request',
+      json: () => Promise.resolve(data),
+      text: () => Promise.resolve('')
+    } as unknown as Response)
+  )
+
+describe('git_create_pr.ts', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     delete process.env.DEBUG
     mockedSpawn.mockReturnValue(createChild(0))
+    ;(global as unknown as { fetch: jest.Mock }).fetch = mockFetch({
+      number: 42
+    })
   })
 
   it('does nothing when there are no changes', async () => {
     await expect(
-      gitPush(
+      gitCreatePr(
         '/tmp/repo',
-        'https://github.com/owner/repo.git',
-        'Release v1.0.0',
-        'token'
+        'owner/repo',
+        'main',
+        'token',
+        undefined,
+        'deployment.yaml',
+        'v1.2.3',
+        '$.version'
       )
     ).resolves.toBe('done!')
 
@@ -70,19 +88,23 @@ describe('git_push.ts', () => {
     })
   })
 
-  it('adds, commits and pushes when changes exist', async () => {
+  it('adds, commits, creates branch, pushes and creates PR when changes exist', async () => {
     mockedSpawn.mockReturnValue(createChild(0, ' M deployment.yaml\n'))
 
     await expect(
-      gitPush(
+      gitCreatePr(
         '/tmp/repo',
-        'https://github.com/owner/repo.git',
-        'Release v1.0.0',
-        'token'
+        'owner/repo',
+        'main',
+        'token',
+        undefined,
+        'deployment.yaml',
+        'v1.2.3',
+        '$.version'
       )
-    ).resolves.toBe('done!')
+    ).resolves.toBe('done! PR #42 created')
 
-    expect(mockedSpawn).toHaveBeenCalledTimes(5)
+    expect(mockedSpawn).toHaveBeenCalledTimes(6)
     expect(mockedSpawn).toHaveBeenNthCalledWith(
       1,
       'git',
@@ -106,7 +128,7 @@ describe('git_push.ts', () => {
         'user.email=github-actions[bot]@users.noreply.github.com',
         'commit',
         '-m',
-        'Release v1.0.0'
+        'Update deployment.yaml'
       ],
       {
         cwd: '/tmp/repo',
@@ -130,87 +152,66 @@ describe('git_push.ts', () => {
     expect(mockedSpawn).toHaveBeenNthCalledWith(
       5,
       'git',
-      ['push', 'origin', 'HEAD'],
+      ['checkout', '-b', 'release/main'],
       {
         cwd: '/tmp/repo',
         stdio: ['ignore', 'pipe', 'pipe']
       }
     )
-  })
-
-  it('uses default commit message when not provided', async () => {
-    mockedSpawn.mockReturnValue(createChild(0, ' M deployment.yaml\n'))
-
-    await expect(
-      gitPush(
-        '/tmp/repo',
-        'https://github.com/owner/repo.git',
-        undefined,
-        'token'
-      )
-    ).resolves.toBe('done!')
-
     expect(mockedSpawn).toHaveBeenNthCalledWith(
-      3,
+      6,
       'git',
-      [
-        '-c',
-        'user.name=github-actions[bot]',
-        '-c',
-        'user.email=github-actions[bot]@users.noreply.github.com',
-        'commit',
-        '-m',
-        'Update deployment file'
-      ],
+      ['push', 'origin', 'release/main'],
       {
         cwd: '/tmp/repo',
         stdio: ['ignore', 'pipe', 'pipe']
       }
     )
-  })
-
-  it('rejects when git exits with a non-zero code', async () => {
-    mockedSpawn
-      .mockReturnValueOnce(createChild(0, ' M deployment.yaml\n'))
-      .mockReturnValueOnce(createChild(0))
-      .mockReturnValueOnce(createChild(1, '', 'commit failed'))
-
-    await expect(
-      gitPush(
-        '/tmp/repo',
-        'https://github.com/owner/repo.git',
-        'Release v1.0.0',
-        'token'
-      )
-    ).rejects.toThrow(
-      'git -c user.name=github-actions[bot] -c user.email=github-actions[bot]@users.noreply.github.com commit -m Release v1.0.0 exited with code 1: commit failed'
+    expect(fetch).toHaveBeenCalledWith(
+      'https://api.github.com/repos/owner/repo/pulls',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer token'
+        })
+      })
     )
   })
 
-  it('rejects when spawning git fails', async () => {
-    mockedSpawn.mockImplementationOnce(() => {
-      throw new Error('spawn failed')
-    })
+  it('rejects when PR creation fails', async () => {
+    mockedSpawn.mockReturnValue(createChild(0, ' M deployment.yaml\n'))
+    ;(global as unknown as { fetch: jest.Mock }).fetch = mockFetch(
+      { message: 'Bad credentials' },
+      false
+    )
 
     await expect(
-      gitPush(
+      gitCreatePr(
         '/tmp/repo',
-        'https://github.com/owner/repo.git',
-        'Release v1.0.0',
-        'token'
+        'owner/repo',
+        'main',
+        'token',
+        undefined,
+        'deployment.yaml',
+        'v1.2.3',
+        '$.version'
       )
-    ).rejects.toThrow('spawn failed')
+    ).rejects.toThrow('Failed to create PR')
   })
 
   it('runs debug commands when DEBUG is set', async () => {
     process.env.DEBUG = '1'
     mockedSpawn.mockReturnValue(createChild(0, ' M deployment.yaml\n'))
 
-    await gitPush(
+    await gitCreatePr(
       '/tmp/repo',
-      'https://github.com/owner/repo.git',
-      'Release v1.0.0',
-      'token'
+      'owner/repo',
+      'main',
+      'token',
+      undefined,
+      'deployment.yaml',
+      'v1.2.3',
+      '$.version'
     )
 
     expect(mockedSpawn).toHaveBeenCalledWith('git', ['config', '--list'], {
@@ -223,5 +224,42 @@ describe('git_push.ts', () => {
     })
 
     delete process.env.DEBUG
+  })
+
+  it('uses GitHub Enterprise URL when provided', async () => {
+    mockedSpawn.mockReturnValue(createChild(0, ' M deployment.yaml\n'))
+
+    await expect(
+      gitCreatePr(
+        '/tmp/repo',
+        'owner/repo',
+        'main',
+        'token',
+        'https://github.example.com',
+        'deployment.yaml',
+        'v1.2.3',
+        '$.version'
+      )
+    ).resolves.toBe('done! PR #42 created')
+
+    expect(mockedSpawn).toHaveBeenCalledWith(
+      'git',
+      [
+        'remote',
+        'set-url',
+        'origin',
+        'https://x-access-token:token@github.example.com/owner/repo.git'
+      ],
+      {
+        cwd: '/tmp/repo',
+        stdio: ['ignore', 'pipe', 'pipe']
+      }
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      'github.example.com/api/v3/repos/owner/repo/pulls',
+      expect.objectContaining({
+        method: 'POST'
+      })
+    )
   })
 })

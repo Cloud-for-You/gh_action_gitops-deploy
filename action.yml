@@ -1,6 +1,10 @@
-name: The name of your action here
-description: Provide a description here
-author: Your name or organization here
+name: Release application
+description:
+  A GitHub Action to release build application to GitOps repository. Application
+  uses direct push to branch or create pull request to release application. The
+  action is designed to be used in CI/CD pipelines to automate the release
+  process of applications to GitOps repositories.
+author: Petr Hatoň
 
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
@@ -9,15 +13,62 @@ branding:
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: Your input description here
+  repository:
+    description: The GitOps repository where the application will be released.
+    required: false
+  ref:
+    description:
+      The target branch in the GitOps repository where the application will be
+      released.
     required: true
-    default: '1000'
+  path:
+    description: The path for cloning the GitOps repository.
+    required: false
+    default: ''
+  token:
+    description:
+      The GitHub token with permissions to push to the target branch in the
+      GitOps repository.
+    required: true
+  github_enterprise_url:
+    description:
+      The URL of the GitHub Enterprise instance. This is required if you are
+      using GitHub Enterprise.
+    required: false
+  deployment_file:
+    description:
+      The path to the deployment file that will be released to the GitOps
+      repository.
+    required: true
+  jsonpath:
+    description:
+      The JSON path to extract the version from the deployment file. This is
+      used to determine the version of the application being released.
+    required: true
+  value:
+    description:
+      The value to be extracted from the deployment file using the provided JSON
+      path. This is used to determine the version of the application being
+      released.
+    required: true
+  push:
+    description:
+      A boolean value indicating whether to push directly to the target branch
+      (true) or create a pull request (false) for the release. Default is false.
+    required: false
+    default: 'false'
+  pull_request:
+    description:
+      A boolean value indicating whether to create a pull request for the
+      release. This is used when the push input is set to false. Default is
+      true.
+    required: false
+    default: 'false'
 
 # Define your outputs here.
 outputs:
   time:
-    description: Your output description here
+    description: The time when the action completed.
 
 runs:
   using: node24

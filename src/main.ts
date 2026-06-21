@@ -1,5 +1,7 @@
 import * as core from '@actions/core'
-import { wait } from './wait.js'
+import { gitClone } from './git_clone.js'
+import { gitPush } from './git_push.js'
+import { updateFile } from './update_file.js'
 
 /**
  * The main function for the action.
@@ -8,15 +10,45 @@ import { wait } from './wait.js'
  */
 export async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
+    const repository: string = core.getInput('repository')
+    const ref: string = core.getInput('ref')
+    const path: string = core.getInput('path')
+    const token: string = core.getInput('token')
+    const deploymentFile: string = core.getInput('deployment_file')
+    const jsonpath: string = core.getInput('jsonpath')
+    const value: string = core.getInput('value')
+    const githubEnterpriseUrl: string = core.getInput('github_enterprise_url')
+    //const push: boolean = core.getBooleanInput('push')
+    //const pullRequest: boolean = core.getBooleanInput('pull_request')
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+    let repositoryUrl: string
+    if (githubEnterpriseUrl) {
+      core.debug(`Using GitHub Enterprise URL: ${githubEnterpriseUrl}`)
+      repositoryUrl = `${githubEnterpriseUrl}/${repository}.git`
+    } else {
+      repositoryUrl = `https://github.com/${repository}.git`
+    }
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    // Clone ops repository to a temporary directory.
+    core.info(`Cloning repository ${repositoryUrl} to ./${path} at ref ${ref}`)
+    await gitClone(repositoryUrl, path, ref, token)
+
+    // Update the deployment file with the new value using the provided JSONPath.
+    core.info(
+      `Updating deployment file ${deploymentFile} at JSONPath ${jsonpath} with value ${value}`
+    )
+    await updateFile(path + '/' + deploymentFile, jsonpath, value)
+
+    // Direct push or create Pull Request
+    if (core.getInput('push') === 'true') {
+      core.info('Direct push is enabled.')
+      await gitPush(path, repositoryUrl, `Update ${deploymentFile}`, token)
+    } else if (core.getInput('pull_request') === 'true') {
+      core.info('Pull request creation is enabled.')
+      // Implement pull request creation logic here
+    } else {
+      core.debug('Neither direct push nor pull request creation is enabled.')
+    }
 
     // Set outputs for other workflow steps to use
     core.setOutput('time', new Date().toTimeString())

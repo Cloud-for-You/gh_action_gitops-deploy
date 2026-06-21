@@ -21,6 +21,15 @@
     "strictNullChecks": true,
     "target": "ES2022"
   },
-  "exclude": ["__fixtures__", "__tests__", "coverage", "dist", "node_modules"],
+  "exclude": [
+    "__fixtures__",
+    "__tests__",
+    "coverage",
+    "dist",
+    "node_modules",
+    "eslint.config.mjs",
+    "jest.config.js",
+    "rollup.config.ts"
+  ],
   "include": ["src"]
 }

@@ -1,6 +1,9 @@
 # Release Application Action
 
-GitHub Action pro nasazení aplikace přes GitOps repozitář. Akce podporuje jak přímý push do větve, tak vytvoření pull requestu pro schvalované nasazování. Automatizuje proces nasazení aplikací přes GitOps repozitář aktualizací konkrétních deployment souborů a values v daném klíči.
+GitHub Action pro nasazení aplikace přes GitOps repozitář. Akce podporuje jak
+přímý push do větve, tak vytvoření pull requestu pro schvalované nasazování.
+Automatizuje proces nasazení aplikací přes GitOps repozitář aktualizací
+konkrétních deployment souborů a values v daném klíči.
 
 ## Funkce
 
@@ -11,24 +14,24 @@ GitHub Action pro nasazení aplikace přes GitOps repozitář. Akce podporuje ja
 
 ## Vstupní parametry
 
-| Parametr              | Popis                                                                                   | Povinný | Výchozí       |
-| --------------------- | --------------------------------------------------------------------------------------- | ------- | -------------- |
-| `repository`          | GitOps repozitář, kam bude aplikace nasazena (např. `owner/repo`)                       | Ano      | -              |
-| `ref`               | Cílová větev v GitOps repozitáři, kam bude aplikace nasazena                          | Ano    | -              |
-| `path`              | Lokální cesta pro klonování GitOps repozitáře                                          | Ne      | Prázdný řetězec |
-| `token`             | GitHub token s oprávněním k pushi do cílové větve                                      | Ano    | -              |
-| `deployment_file`     | Cesta k deployment souboru, který bude aktualizován (relativní k rootu repozitáře)             | Ano    | -              |
-| `jsonpath`          | JSONPath výraz pro umístění hodnoty v deployment souboru (např. `$.spec.version`)         | Ano    | -              |
-| `value`             | Nová hodnota na zadaném JSONPath                                                      | Ano    | -              |
-| `github_enterprise_url` | URL GitHub Enterprise instance (např. `https://github.mycompany.com`)                     | Ne      | -              |
-| `push`              | Nastavit na `true` pro přímý push do cílové větve                                        | Ne      | `false`        |
-| `pull_request`        | Nastavit na `true` pro vytvoření pull requestu (pouze když `push` je `false`)           | Ne      | `false`        |
+| Parametr                | Popis                                                                              | Povinný | Výchozí         |
+| ----------------------- | ---------------------------------------------------------------------------------- | ------- | --------------- |
+| `repository`            | GitOps repozitář, kam bude aplikace nasazena (např. `owner/repo`)                  | Ano     | -               |
+| `ref`                   | Cílová větev v GitOps repozitáři, kam bude aplikace nasazena                       | Ano     | -               |
+| `path`                  | Lokální cesta pro klonování GitOps repozitáře                                      | Ne      | Prázdný řetězec |
+| `token`                 | GitHub token s oprávněním k pushi do cílové větve                                  | Ano     | -               |
+| `deployment_file`       | Cesta k deployment souboru, který bude aktualizován (relativní k rootu repozitáře) | Ano     | -               |
+| `jsonpath`              | JSONPath výraz pro umístění hodnoty v deployment souboru (např. `$.spec.version`)  | Ano     | -               |
+| `value`                 | Nová hodnota na zadaném JSONPath                                                   | Ano     | -               |
+| `github_enterprise_url` | URL GitHub Enterprise instance (např. `https://github.mycompany.com`)              | Ne      | -               |
+| `push`                  | Nastavit na `true` pro přímý push do cílové větve                                  | Ne      | `false`         |
+| `pull_request`          | Nastavit na `true` pro vytvoření pull requestu (pouze když `push` je `false`)      | Ne      | `false`         |
 
 ## Výstupy
 
-| Výstup | Popis                           |
-| ------ | ------------------------------- |
-| `time` | Čas dokončení akce              |
+| Výstup | Popis              |
+| ------ | ------------------ |
+| `time` | Čas dokončení akce |
 
 ## Příklady použití
 

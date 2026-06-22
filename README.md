@@ -104,6 +104,29 @@ Aktualizace vnořených hodnot v polích:
     push: true
 ```
 
+### Práce s poli
+
+JSONPath výrazy podporují různé způsoby adresování polí:
+
+| Operand          | Popis                              | Příklad                    |
+| ---------------- | ---------------------------------- | -------------------------- |
+| `[index]`        | Přístup k prvku pole podle indexu | `$.apps[0].name`           |
+| `[*]`            | Všechny prvky pole                 | `$.apps[*].replicas`       |
+| `['property']`     | Přístup k vlastnosti (bracket)     | `$['apps'][0]['name']`     |
+| `.`              | Přístup k vlastnosti (dot)        | `$.apps[0].name`           |
+
+Příklady pro aktualizaci polí:
+
+```yaml
+# Aktualizace konkrétního prvku pole
+jsonpath: '$.apps[0].name'
+value: 'myapp'
+
+# Aktualizace všech prvků pole (wildcard)
+jsonpath: '$.apps[*].replicas'
+value: '3'
+```
+
 ## Požadavky
 
 - Deployment soubor musí být platný YAML soubor

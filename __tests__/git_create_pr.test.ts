@@ -60,6 +60,7 @@ const mockFetch = (data: unknown, ok = true) =>
 describe('git_create_pr.ts', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    delete process.env.DEBUG
     mockedSpawn.mockReturnValue(createChild(0))
     ;(global as unknown as { fetch: jest.Mock }).fetch = mockFetch({
       number: 42
@@ -151,7 +152,7 @@ describe('git_create_pr.ts', () => {
     expect(mockedSpawn).toHaveBeenNthCalledWith(
       5,
       'git',
-      ['checkout', '-b', 'release/v1.2.3'],
+      ['checkout', '-b', 'release/main'],
       {
         cwd: '/tmp/repo',
         stdio: ['ignore', 'pipe', 'pipe']
@@ -160,7 +161,7 @@ describe('git_create_pr.ts', () => {
     expect(mockedSpawn).toHaveBeenNthCalledWith(
       6,
       'git',
-      ['push', 'origin', 'release/v1.2.3'],
+      ['push', 'origin', 'release/main'],
       {
         cwd: '/tmp/repo',
         stdio: ['ignore', 'pipe', 'pipe']
@@ -196,5 +197,69 @@ describe('git_create_pr.ts', () => {
         '$.version'
       )
     ).rejects.toThrow('Failed to create PR')
+  })
+
+  it('runs debug commands when DEBUG is set', async () => {
+    process.env.DEBUG = '1'
+    mockedSpawn.mockReturnValue(createChild(0, ' M deployment.yaml\n'))
+
+    await gitCreatePr(
+      '/tmp/repo',
+      'owner/repo',
+      'main',
+      'token',
+      undefined,
+      'deployment.yaml',
+      'v1.2.3',
+      '$.version'
+    )
+
+    expect(mockedSpawn).toHaveBeenCalledWith('git', ['config', '--list'], {
+      cwd: '/tmp/repo',
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+    expect(mockedSpawn).toHaveBeenCalledWith('git', ['status'], {
+      cwd: '/tmp/repo',
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+
+    delete process.env.DEBUG
+  })
+
+  it('uses GitHub Enterprise URL when provided', async () => {
+    mockedSpawn.mockReturnValue(createChild(0, ' M deployment.yaml\n'))
+
+    await expect(
+      gitCreatePr(
+        '/tmp/repo',
+        'owner/repo',
+        'main',
+        'token',
+        'https://github.example.com',
+        'deployment.yaml',
+        'v1.2.3',
+        '$.version'
+      )
+    ).resolves.toBe('done! PR #42 created')
+
+    expect(mockedSpawn).toHaveBeenCalledWith(
+      'git',
+      [
+        'remote',
+        'set-url',
+        'origin',
+        'https://x-access-token:token@github.example.com/owner/repo.git'
+      ],
+      {
+        cwd: '/tmp/repo',
+        stdio: ['ignore', 'pipe', 'pipe']
+      }
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      'github.example.com/api/v3/repos/owner/repo/pulls',
+      expect.objectContaining({
+        method: 'POST'
+      })
+    )
   })
 })

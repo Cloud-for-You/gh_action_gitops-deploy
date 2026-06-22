@@ -46,25 +46,30 @@ const createChild = (
   return child
 }
 
-const mockFetch = (data: unknown, ok = true) =>
-  jest.fn(() =>
-    Promise.resolve({
+const createFetchMock = (responses: Array<{ data: unknown; ok: boolean; status?: number; statusText?: string }>) => {
+  let callIndex = 0
+  return jest.fn(() => {
+    const { data, ok, status = ok ? 200 : 400, statusText = ok ? 'OK' : 'Bad Request' } = responses[callIndex] || { data: null, ok: false }
+    callIndex++
+    return Promise.resolve({
       ok,
-      status: ok ? 201 : 400,
-      statusText: ok ? 'Created' : 'Bad Request',
+      status,
+      statusText,
       json: () => Promise.resolve(data),
       text: () => Promise.resolve('')
     } as unknown as Response)
-  )
+  })
+}
 
 describe('git_create_pr.ts', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     delete process.env.DEBUG
     mockedSpawn.mockReturnValue(createChild(0))
-    ;(global as unknown as { fetch: jest.Mock }).fetch = mockFetch({
-      number: 42
-    })
+    ;(global as unknown as { fetch: jest.Mock }).fetch = createFetchMock([
+      { data: [], ok: true },
+      { data: { number: 42 }, ok: true, status: 201, statusText: 'Created' }
+    ])
   })
 
   it('does nothing when there are no changes', async () => {
@@ -152,7 +157,7 @@ describe('git_create_pr.ts', () => {
     expect(mockedSpawn).toHaveBeenNthCalledWith(
       5,
       'git',
-      ['checkout', '-b', 'release/main'],
+      ['checkout', '-B', 'release/main'],
       {
         cwd: '/tmp/repo',
         stdio: ['ignore', 'pipe', 'pipe']
@@ -161,13 +166,22 @@ describe('git_create_pr.ts', () => {
     expect(mockedSpawn).toHaveBeenNthCalledWith(
       6,
       'git',
-      ['push', 'origin', 'release/main'],
+      ['push', '--force-with-lease', 'origin', 'release/main'],
       {
         cwd: '/tmp/repo',
         stdio: ['ignore', 'pipe', 'pipe']
       }
     )
+    expect(fetch).toHaveBeenCalledTimes(2)
     expect(fetch).toHaveBeenCalledWith(
+      'https://api.github.com/repos/owner/repo/pulls?head=owner:release/main&base=main',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer token'
+        })
+      })
+    )
+    expect(fetch).toHaveBeenLastCalledWith(
       'https://api.github.com/repos/owner/repo/pulls',
       expect.objectContaining({
         method: 'POST',
@@ -180,10 +194,10 @@ describe('git_create_pr.ts', () => {
 
   it('rejects when PR creation fails', async () => {
     mockedSpawn.mockReturnValue(createChild(0, ' M deployment.yaml\n'))
-    ;(global as unknown as { fetch: jest.Mock }).fetch = mockFetch(
-      { message: 'Bad credentials' },
-      false
-    )
+    ;(global as unknown as { fetch: jest.Mock }).fetch = createFetchMock([
+      { data: [], ok: true },
+      { data: { message: 'Bad credentials' }, ok: false, status: 401, statusText: 'Unauthorized' }
+    ])
 
     await expect(
       gitCreatePr(
@@ -197,6 +211,29 @@ describe('git_create_pr.ts', () => {
         '$.version'
       )
     ).rejects.toThrow('Failed to create PR')
+  })
+
+  it('returns existing PR when one already exists', async () => {
+    mockedSpawn.mockReturnValue(createChild(0, ' M deployment.yaml\n'))
+    ;(global as unknown as { fetch: jest.Mock }).fetch = createFetchMock([
+      { data: [{ number: 99, title: 'Existing PR' }], ok: true }
+    ])
+
+    await expect(
+      gitCreatePr(
+        '/tmp/repo',
+        'owner/repo',
+        'main',
+        'token',
+        undefined,
+        'deployment.yaml',
+        'v1.2.3',
+        '$.version'
+      )
+    ).resolves.toBe('done! PR #99 already exists')
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(mockedSpawn).toHaveBeenCalledTimes(6)
   })
 
   it('runs debug commands when DEBUG is set', async () => {

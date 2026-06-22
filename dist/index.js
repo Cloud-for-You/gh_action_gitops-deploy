@@ -28425,7 +28425,20 @@ async function gitCreatePr(path, repository, ref, token, githubEnterpriseUrl, de
     const apiBase = githubEnterpriseUrl
         ? `${githubEnterpriseUrl.replace(/^https?:\/\//, '')}/api/v3`
         : 'https://api.github.com';
-    const response = await fetch(`${apiBase}/repos/${repository}/pulls`, {
+    const existingPr = await fetch(`${apiBase}/repos/${repository}/pulls?head=${repository.split('/')[0]}:${branchName}&base=${ref}`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+        }
+    });
+    if (existingPr.ok) {
+        const pulls = (await existingPr.json());
+        if (pulls.length > 0) {
+            return `done! PR #${pulls[0].number} already exists`;
+        }
+    }
+    const prResponse = await fetch(`${apiBase}/repos/${repository}/pulls`, {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${token}`,
@@ -28439,11 +28452,11 @@ async function gitCreatePr(path, repository, ref, token, githubEnterpriseUrl, de
             body: `Updated ${deploymentFile} at JSONPath \`${jsonpath}\` with value \`${value}\`.`
         })
     });
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to create PR: ${response.status} ${response.statusText} - ${errorText}`);
+    if (!prResponse.ok) {
+        const errorText = await prResponse.text();
+        throw new Error(`Failed to create PR: ${prResponse.status} ${prResponse.statusText} - ${errorText}`);
     }
-    const data = (await response.json());
+    const data = (await prResponse.json());
     return `done! PR #${data.number} created`;
 }
 

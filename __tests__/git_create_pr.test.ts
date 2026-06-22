@@ -198,4 +198,68 @@ describe('git_create_pr.ts', () => {
       )
     ).rejects.toThrow('Failed to create PR')
   })
+
+  it('runs debug commands when DEBUG is set', async () => {
+    process.env.DEBUG = '1'
+    mockedSpawn.mockReturnValue(createChild(0, ' M deployment.yaml\n'))
+
+    await gitCreatePr(
+      '/tmp/repo',
+      'owner/repo',
+      'main',
+      'token',
+      undefined,
+      'deployment.yaml',
+      'v1.2.3',
+      '$.version'
+    )
+
+    expect(mockedSpawn).toHaveBeenCalledWith('git', ['config', '--list'], {
+      cwd: '/tmp/repo',
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+    expect(mockedSpawn).toHaveBeenCalledWith('git', ['status'], {
+      cwd: '/tmp/repo',
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+
+    delete process.env.DEBUG
+  })
+
+  it('uses GitHub Enterprise URL when provided', async () => {
+    mockedSpawn.mockReturnValue(createChild(0, ' M deployment.yaml\n'))
+
+    await expect(
+      gitCreatePr(
+        '/tmp/repo',
+        'owner/repo',
+        'main',
+        'token',
+        'https://github.example.com',
+        'deployment.yaml',
+        'v1.2.3',
+        '$.version'
+      )
+    ).resolves.toBe('done! PR #42 created')
+
+    expect(mockedSpawn).toHaveBeenCalledWith(
+      'git',
+      [
+        'remote',
+        'set-url',
+        'origin',
+        'https://x-access-token:token@github.example.com/owner/repo.git'
+      ],
+      {
+        cwd: '/tmp/repo',
+        stdio: ['ignore', 'pipe', 'pipe']
+      }
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      'github.example.com/api/v3/repos/owner/repo/pulls',
+      expect.objectContaining({
+        method: 'POST'
+      })
+    )
+  })
 })

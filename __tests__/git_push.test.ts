@@ -138,6 +138,37 @@ describe('git_push.ts', () => {
     )
   })
 
+  it('uses default commit message when not provided', async () => {
+    mockedSpawn.mockReturnValue(createChild(0, ' M deployment.yaml\n'))
+
+    await expect(
+      gitPush(
+        '/tmp/repo',
+        'https://github.com/owner/repo.git',
+        undefined,
+        'token'
+      )
+    ).resolves.toBe('done!')
+
+    expect(mockedSpawn).toHaveBeenNthCalledWith(
+      3,
+      'git',
+      [
+        '-c',
+        'user.name=github-actions[bot]',
+        '-c',
+        'user.email=github-actions[bot]@users.noreply.github.com',
+        'commit',
+        '-m',
+        'Update deployment file'
+      ],
+      {
+        cwd: '/tmp/repo',
+        stdio: ['ignore', 'pipe', 'pipe']
+      }
+    )
+  })
+
   it('rejects when git exits with a non-zero code', async () => {
     mockedSpawn
       .mockReturnValueOnce(createChild(0, ' M deployment.yaml\n'))
@@ -169,5 +200,28 @@ describe('git_push.ts', () => {
         'token'
       )
     ).rejects.toThrow('spawn failed')
+  })
+
+  it('runs debug commands when DEBUG is set', async () => {
+    process.env.DEBUG = '1'
+    mockedSpawn.mockReturnValue(createChild(0, ' M deployment.yaml\n'))
+
+    await gitPush(
+      '/tmp/repo',
+      'https://github.com/owner/repo.git',
+      'Release v1.0.0',
+      'token'
+    )
+
+    expect(mockedSpawn).toHaveBeenCalledWith('git', ['config', '--list'], {
+      cwd: '/tmp/repo',
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+    expect(mockedSpawn).toHaveBeenCalledWith('git', ['status'], {
+      cwd: '/tmp/repo',
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+
+    delete process.env.DEBUG
   })
 })

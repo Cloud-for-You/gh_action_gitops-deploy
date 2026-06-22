@@ -51,13 +51,32 @@ export async function gitCreatePr(
   const remoteUrl = `https://x-access-token:${token}@${repositoryUrl.replace(/^https?:\/\//, '')}`
   await runGit(path, ['remote', 'set-url', 'origin', remoteUrl])
 
-  await runGit(path, ['checkout', '-b', branchName])
-  await runGit(path, ['push', 'origin', branchName])
+  await runGit(path, ['checkout', '-B', branchName])
+  await runGit(path, ['push', '--force-with-lease', 'origin', branchName])
 
   const apiBase = githubEnterpriseUrl
     ? `${githubEnterpriseUrl.replace(/^https?:\/\//, '')}/api/v3`
     : 'https://api.github.com'
-  const response = await fetch(`${apiBase}/repos/${repository}/pulls`, {
+
+  const existingPr = await fetch(
+    `${apiBase}/repos/${repository}/pulls?head=${repository.split('/')[0]}:${branchName}&base=${ref}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      }
+    }
+  )
+
+  if (existingPr.ok) {
+    const pulls = (await existingPr.json()) as { number: number }[]
+    if (pulls.length > 0) {
+      return `done! PR #${pulls[0].number} already exists`
+    }
+  }
+
+  const prResponse = await fetch(`${apiBase}/repos/${repository}/pulls`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -72,13 +91,13 @@ export async function gitCreatePr(
     })
   })
 
-  if (!response.ok) {
-    const errorText = await response.text()
+  if (!prResponse.ok) {
+    const errorText = await prResponse.text()
     throw new Error(
-      `Failed to create PR: ${response.status} ${response.statusText} - ${errorText}`
+      `Failed to create PR: ${prResponse.status} ${prResponse.statusText} - ${errorText}`
     )
   }
 
-  const data = (await response.json()) as { number: number }
+  const data = (await prResponse.json()) as { number: number }
   return `done! PR #${data.number} created`
 }

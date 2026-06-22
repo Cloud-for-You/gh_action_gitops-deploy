@@ -51,8 +51,8 @@ export async function gitCreatePr(
   const remoteUrl = `https://x-access-token:${token}@${repositoryUrl.replace(/^https?:\/\//, '')}`
   await runGit(path, ['remote', 'set-url', 'origin', remoteUrl])
 
-  await runGit(path, ['checkout', '-b', branchName])
-  await runGit(path, ['push', 'origin', branchName])
+  await runGit(path, ['checkout', '-B', branchName])
+  await runGit(path, ['push', '--force-with-lease', 'origin', branchName])
 
   const apiBase = githubEnterpriseUrl
     ? `${githubEnterpriseUrl.replace(/^https?:\/\//, '')}/api/v3`

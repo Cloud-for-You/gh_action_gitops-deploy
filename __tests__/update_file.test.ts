@@ -63,7 +63,7 @@ describe('update_file.ts', () => {
     mockedReadFile.mockRejectedValueOnce(new Error('ENOENT'))
 
     await expect(updateFile('missing.yaml', '$.key', 'value')).rejects.toThrow(
-      'File not found: /tmp/ops-repo/missing.yaml'
+      'File not found: missing.yaml'
     )
   })
 
@@ -71,7 +71,7 @@ describe('update_file.ts', () => {
     mockedReadFile.mockResolvedValueOnce('{{invalid: yaml: [')
 
     await expect(updateFile('invalid.yaml', '$.key', 'value')).rejects.toThrow(
-      'Invalid YAML file: /tmp/ops-repo/invalid.yaml'
+      'Invalid YAML file: invalid.yaml'
     )
   })
 

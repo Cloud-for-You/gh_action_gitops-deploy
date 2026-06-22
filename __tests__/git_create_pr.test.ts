@@ -60,6 +60,7 @@ const mockFetch = (data: unknown, ok = true) =>
 describe('git_create_pr.ts', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    delete process.env.DEBUG
     mockedSpawn.mockReturnValue(createChild(0))
     ;(global as unknown as { fetch: jest.Mock }).fetch = mockFetch({
       number: 42
@@ -151,7 +152,7 @@ describe('git_create_pr.ts', () => {
     expect(mockedSpawn).toHaveBeenNthCalledWith(
       5,
       'git',
-      ['checkout', '-b', 'release/v1.2.3'],
+      ['checkout', '-b', 'release/main'],
       {
         cwd: '/tmp/repo',
         stdio: ['ignore', 'pipe', 'pipe']
@@ -160,7 +161,7 @@ describe('git_create_pr.ts', () => {
     expect(mockedSpawn).toHaveBeenNthCalledWith(
       6,
       'git',
-      ['push', 'origin', 'release/v1.2.3'],
+      ['push', 'origin', 'release/main'],
       {
         cwd: '/tmp/repo',
         stdio: ['ignore', 'pipe', 'pipe']

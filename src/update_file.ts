@@ -41,8 +41,8 @@ export async function updateFile(
   const results = JSONPath({
     path: jsonpath,
     json: obj,
-    resultType: 'all', // KLÍČOVÉ
-    preventEval: true
+    resultType: 'all',
+    eval: false
   })
 
   if (!results || results.length === 0) {

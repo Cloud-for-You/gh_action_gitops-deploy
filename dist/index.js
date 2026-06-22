@@ -33455,8 +33455,8 @@ async function updateFile(filePath, jsonpath, value) {
     const results = JSONPath({
         path: jsonpath,
         json: obj,
-        resultType: 'all', // KLÍČOVÉ
-        preventEval: true
+        resultType: 'all',
+        eval: false
     });
     if (!results || results.length === 0) {
         throw new Error(`JSONPath not found: ${jsonpath}`);

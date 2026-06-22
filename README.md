@@ -108,12 +108,12 @@ Aktualizace vnořených hodnot v polích:
 
 JSONPath výrazy podporují různé způsoby adresování polí:
 
-| Operand          | Popis                              | Příklad                    |
-| ---------------- | ---------------------------------- | -------------------------- |
-| `[index]`        | Přístup k prvku pole podle indexu | `$.apps[0].name`           |
-| `[*]`            | Všechny prvky pole                 | `$.apps[*].replicas`       |
-| `['property']`     | Přístup k vlastnosti (bracket)     | `$['apps'][0]['name']`     |
-| `.`              | Přístup k vlastnosti (dot)        | `$.apps[0].name`           |
+| Operand            | Popis                             | Příklad                              |
+| ------------------ | --------------------------------- | ------------------------------------ |
+| `[index]`          | Přístup k prvku pole podle indexu | `$.apps[0].name`                     |
+| `[*]`              | Všechny prvky pole                | `$.apps[*].replicas`                 |
+| `['property']`     | Přístup k vlastnosti (bracket)    | `$['apps'][0]['name']`               |
+| `.`                | Přístup k vlastnosti (dot)        | `$.apps[0].name`                     |
 | `[?(@.prop==val)]` | Select podle podmínky             | `$.apps[?(@.name=='myapp')].version` |
 
 Příklady pro aktualizaci polí:

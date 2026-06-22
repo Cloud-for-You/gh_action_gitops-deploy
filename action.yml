@@ -15,7 +15,7 @@ branding:
 inputs:
   repository:
     description: The GitOps repository where the application will be released.
-    required: false
+    required: true
   ref:
     description:
       The target branch in the GitOps repository where the application will be

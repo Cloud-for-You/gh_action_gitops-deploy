@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises'
 import * as yaml from 'js-yaml'
+import { JSONPath } from 'jsonpath-plus'
 
 /**
  * Update a file with new values
@@ -14,6 +15,7 @@ export async function updateFile(
   jsonpath: string,
   value: string
 ): Promise<string> {
+  // 1. načtení souboru
   let content: string
   try {
     content = await fs.readFile(filePath, 'utf-8')
@@ -21,6 +23,7 @@ export async function updateFile(
     throw new Error(`File not found: ${filePath}`, { cause: e })
   }
 
+  // 2. parse YAML
   let obj: unknown
   try {
     obj = yaml.load(content)
@@ -34,102 +37,32 @@ export async function updateFile(
     )
   }
 
-  const tokens = parseJsonPath(jsonpath)
-  if (tokens.length === 0) {
-    throw new Error(`Invalid JSONPath: ${jsonpath}`)
+  // 3. najdi parent objekty + key
+  const results = JSONPath({
+    path: jsonpath,
+    json: obj,
+    resultType: 'all', // KLÍČOVÉ
+    preventEval: true
+  })
+
+  if (!results || results.length === 0) {
+    throw new Error(`JSONPath not found: ${jsonpath}`)
   }
 
-  let current: unknown = obj
-  for (let i = 0; i < tokens.length - 1; i++) {
-    const token = tokens[i]
-    if (typeof token === 'number') {
-      const arr = current as unknown[]
-      if (!Array.isArray(arr)) {
-        throw new Error(`Expected array at path segment ${token}`)
-      }
-      if (arr[token] === undefined || arr[token] === null) {
-        const next = tokens[i + 1]
-        arr[token] = typeof next === 'number' ? [] : {}
-      }
-      current = arr[token]
-    } else {
-      const map = current as Record<string, unknown>
-      if (typeof map !== 'object' || map === null || Array.isArray(map)) {
-        throw new Error(`Expected object at property ${token}`)
-      }
-      if (map[token] === undefined || map[token] === null) {
-        const next = tokens[i + 1]
-        map[token] = typeof next === 'number' ? [] : {}
-      }
-      current = map[token]
+  // 4. update hodnot
+  for (const r of results) {
+    const parent = r.parent as Record<string, unknown> | null
+    const key = r.parentProperty as string | undefined
+
+    if (parent === null || key === undefined) {
+      throw new Error(`Cannot set value at path: ${jsonpath}`)
     }
+
+    parent[key] = value
   }
 
-  const last = tokens[tokens.length - 1]
-  if (typeof last === 'number') {
-    const arr = current as unknown[]
-    if (!Array.isArray(arr) || last >= arr.length) {
-      throw new Error(`JSONPath index out of bounds: ${jsonpath}`)
-    }
-    arr[last] = value
-  } else {
-    ;(current as Record<string, unknown>)[last] = value
-  }
-
+  // 5. zapiš zpět
   await fs.writeFile(filePath, yaml.dump(obj), 'utf-8')
 
   return 'done!'
-}
-
-function parseJsonPath(path: string): (string | number)[] {
-  if (!path.startsWith('$')) {
-    throw new Error(`Invalid JSONPath: ${path}`)
-  }
-
-  const tokens: (string | number)[] = []
-  let remaining = path.slice(1)
-
-  while (remaining.length > 0) {
-    if (remaining.startsWith('.')) {
-      remaining = remaining.slice(1)
-      const dotMatch = remaining.match(/^([a-zA-Z_$][\w-]*)/)
-      if (dotMatch) {
-        tokens.push(dotMatch[1])
-        remaining = remaining.slice(dotMatch[1].length)
-      } else {
-        throw new Error(`Invalid JSONPath: ${path}`)
-      }
-    } else if (remaining.startsWith('[')) {
-      remaining = remaining.slice(1)
-      if (remaining.startsWith("'") || remaining.startsWith('"')) {
-        const quote = remaining[0]
-        remaining = remaining.slice(1)
-        const end = remaining.indexOf(quote)
-        if (end === -1) {
-          throw new Error(`Invalid JSONPath: ${path}`)
-        }
-        tokens.push(remaining.slice(0, end))
-        remaining = remaining.slice(end + 1)
-        if (!remaining.startsWith(']')) {
-          throw new Error(`Invalid JSONPath: ${path}`)
-        }
-        remaining = remaining.slice(1)
-      } else {
-        const numMatch = remaining.match(/^(\d+)/)
-        if (!numMatch) {
-          throw new Error(`Invalid JSONPath: ${path}`)
-        }
-        tokens.push(parseInt(numMatch[1]))
-        remaining = remaining.slice(numMatch[1].length)
-        if (!remaining.startsWith(']')) {
-          throw new Error(`Invalid JSONPath: ${path}`)
-        }
-        remaining = remaining.slice(1)
-      }
-    } else {
-      throw new Error(`Invalid JSONPath: ${path}`)
-    }
-  }
-
-  return tokens
 }

@@ -19,8 +19,7 @@ export async function run(): Promise<void> {
     const jsonpath: string = core.getInput('jsonpath')
     const value: string = core.getInput('value')
     const githubEnterpriseUrl: string = core.getInput('github_enterprise_url')
-    //const push: boolean = core.getBooleanInput('push')
-    //const pullRequest: boolean = core.getBooleanInput('pull_request')
+    const message: string = core.getInput('message')
 
     let repositoryUrl: string
     if (githubEnterpriseUrl) {
@@ -43,7 +42,7 @@ export async function run(): Promise<void> {
     // Direct push or create Pull Request
     if (core.getInput('push') === 'true') {
       core.info('Direct push is enabled.')
-      await gitPush(path, repositoryUrl, `Update ${deploymentFile}`, token)
+      await gitPush(path, repositoryUrl, token, message)
     } else if (core.getInput('pull_request') === 'true') {
       core.info('Pull request creation is enabled.')
       await gitCreatePr(
@@ -54,7 +53,8 @@ export async function run(): Promise<void> {
         githubEnterpriseUrl || undefined,
         deploymentFile,
         value,
-        jsonpath
+        jsonpath,
+        message
       )
     } else {
       core.debug('Neither direct push nor pull request creation is enabled.')

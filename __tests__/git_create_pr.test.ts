@@ -46,10 +46,22 @@ const createChild = (
   return child
 }
 
-const createFetchMock = (responses: Array<{ data: unknown; ok: boolean; status?: number; statusText?: string }>) => {
+const createFetchMock = (
+  responses: Array<{
+    data: unknown
+    ok: boolean
+    status?: number
+    statusText?: string
+  }>
+) => {
   let callIndex = 0
   return jest.fn(() => {
-    const { data, ok, status = ok ? 200 : 400, statusText = ok ? 'OK' : 'Bad Request' } = responses[callIndex] || { data: null, ok: false }
+    const {
+      data,
+      ok,
+      status = ok ? 200 : 400,
+      statusText = ok ? 'OK' : 'Bad Request'
+    } = responses[callIndex] || { data: null, ok: false }
     callIndex++
     return Promise.resolve({
       ok,
@@ -105,7 +117,8 @@ describe('git_create_pr.ts', () => {
         undefined,
         'deployment.yaml',
         'v1.2.3',
-        '$.version'
+        '$.version',
+        'Release application version v1.2.3'
       )
     ).resolves.toBe('done! PR #42 created')
 
@@ -133,7 +146,7 @@ describe('git_create_pr.ts', () => {
         'user.email=github-actions[bot]@users.noreply.github.com',
         'commit',
         '-m',
-        'Update deployment.yaml'
+        'Update deployment.yaml - Release application version v1.2.3'
       ],
       {
         cwd: '/tmp/repo',
@@ -196,7 +209,12 @@ describe('git_create_pr.ts', () => {
     mockedSpawn.mockReturnValue(createChild(0, ' M deployment.yaml\n'))
     ;(global as unknown as { fetch: jest.Mock }).fetch = createFetchMock([
       { data: [], ok: true },
-      { data: { message: 'Bad credentials' }, ok: false, status: 401, statusText: 'Unauthorized' }
+      {
+        data: { message: 'Bad credentials' },
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized'
+      }
     ])
 
     await expect(

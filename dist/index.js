@@ -28352,11 +28352,11 @@ async function gitClone(repositoryUrl, path, branch, token) {
  * Push changes to the cloned GitHub repository.
  *
  * @param path The path directory where repository is located.
- * @param message The commit message.
  * @param token The GitHub token for authentication (optional).
+ * @param message The commit message.
  * @returns Resolves with 'done!' after the push is over.
  */
-async function gitPush(path, repositoryUrl, message = 'Update deployment file', token) {
+async function gitPush(path, repositoryUrl, token, message = 'Update deployment file') {
     const status = await runGit(path, ['status', '--porcelain']);
     if (status.trim() === '') {
         return 'done!';
@@ -28393,9 +28393,10 @@ async function gitPush(path, repositoryUrl, message = 'Update deployment file', 
  * @param deploymentFile The deployment file being updated.
  * @param value The new value being set.
  * @param jsonpath The JSON path that was updated.
+ * @param message The commit message for the pull request.
  * @returns Resolves with status string after creating the pull request.
  */
-async function gitCreatePr(path, repository, ref, token, githubEnterpriseUrl, deploymentFile, value, jsonpath) {
+async function gitCreatePr(path, repository, ref, token, githubEnterpriseUrl, deploymentFile, value, jsonpath, message) {
     const status = await runGit(path, ['status', '--porcelain']);
     if (status.trim() === '') {
         return 'done!';
@@ -28408,7 +28409,7 @@ async function gitCreatePr(path, repository, ref, token, githubEnterpriseUrl, de
         'user.email=github-actions[bot]@users.noreply.github.com',
         'commit',
         '-m',
-        `Update ${deploymentFile}`
+        `Update ${deploymentFile} - ${message}`
     ]);
     if (process.env.DEBUG) {
         await runGit(path, ['config', '--list']);
@@ -28446,7 +28447,7 @@ async function gitCreatePr(path, repository, ref, token, githubEnterpriseUrl, de
             'X-GitHub-Api-Version': '2022-11-28'
         },
         body: JSON.stringify({
-            title: `Update ${deploymentFile}`,
+            title: message,
             head: branchName,
             base: ref,
             body: `Updated ${deploymentFile} at JSONPath \`${jsonpath}\` with value \`${value}\`.`
@@ -33503,8 +33504,7 @@ async function run() {
         const jsonpath = getInput('jsonpath');
         const value = getInput('value');
         const githubEnterpriseUrl = getInput('github_enterprise_url');
-        //const push: boolean = core.getBooleanInput('push')
-        //const pullRequest: boolean = core.getBooleanInput('pull_request')
+        const message = getInput('message');
         let repositoryUrl;
         if (githubEnterpriseUrl) {
             debug(`Using GitHub Enterprise URL: ${githubEnterpriseUrl}`);
@@ -33522,11 +33522,11 @@ async function run() {
         // Direct push or create Pull Request
         if (getInput('push') === 'true') {
             info('Direct push is enabled.');
-            await gitPush(path, repositoryUrl, `Update ${deploymentFile}`, token);
+            await gitPush(path, repositoryUrl, token, message);
         }
         else if (getInput('pull_request') === 'true') {
             info('Pull request creation is enabled.');
-            await gitCreatePr(path, repository, ref, token, githubEnterpriseUrl || undefined, deploymentFile, value, jsonpath);
+            await gitCreatePr(path, repository, ref, token, githubEnterpriseUrl || undefined, deploymentFile, value, jsonpath, message);
         }
         else {
             debug('Neither direct push nor pull request creation is enabled.');

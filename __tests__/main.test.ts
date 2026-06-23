@@ -66,6 +66,7 @@ describe('main.ts', () => {
       .mockReturnValueOnce('$.image.tag')
       .mockReturnValueOnce('v1.2.3')
       .mockReturnValueOnce('')
+      .mockReturnValueOnce('Update deployment.yaml')
       .mockReturnValueOnce('true')
       .mockReturnValueOnce('false')
 
@@ -74,8 +75,8 @@ describe('main.ts', () => {
     expect(gitPush).toHaveBeenCalledWith(
       '/tmp/ops',
       'https://github.com/owner/ops.git',
-      'Update deployment.yaml',
-      'token'
+      'token',
+      'Update deployment.yaml'
     )
   })
 
@@ -90,6 +91,7 @@ describe('main.ts', () => {
       .mockReturnValueOnce('$.image.tag')
       .mockReturnValueOnce('v1.2.3')
       .mockReturnValueOnce('')
+      .mockReturnValueOnce('Release application version v1.2.3')
       .mockReturnValueOnce('false')
       .mockReturnValueOnce('true')
 
@@ -103,7 +105,8 @@ describe('main.ts', () => {
       undefined,
       'deployment.yaml',
       'v1.2.3',
-      '$.image.tag'
+      '$.image.tag',
+      'Release application version v1.2.3'
     )
   })
 

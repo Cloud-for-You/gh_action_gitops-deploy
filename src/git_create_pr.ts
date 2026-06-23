@@ -11,6 +11,7 @@ import { runGit } from './git_run.js'
  * @param deploymentFile The deployment file being updated.
  * @param value The new value being set.
  * @param jsonpath The JSON path that was updated.
+ * @param message The commit message for the pull request.
  * @returns Resolves with status string after creating the pull request.
  */
 export async function gitCreatePr(
@@ -21,7 +22,8 @@ export async function gitCreatePr(
   githubEnterpriseUrl: string | undefined,
   deploymentFile: string,
   value: string,
-  jsonpath: string
+  jsonpath: string,
+  message: string
 ): Promise<string> {
   const status = await runGit(path, ['status', '--porcelain'])
   if (status.trim() === '') {
@@ -36,7 +38,7 @@ export async function gitCreatePr(
     'user.email=github-actions[bot]@users.noreply.github.com',
     'commit',
     '-m',
-    `Update ${deploymentFile}`
+    `Update ${deploymentFile} - ${message}`
   ])
   if (process.env.DEBUG) {
     await runGit(path, ['config', '--list'])
@@ -84,7 +86,7 @@ export async function gitCreatePr(
       'X-GitHub-Api-Version': '2022-11-28'
     },
     body: JSON.stringify({
-      title: `Update ${deploymentFile}`,
+      title: message,
       head: branchName,
       base: ref,
       body: `Updated ${deploymentFile} at JSONPath \`${jsonpath}\` with value \`${value}\`.`

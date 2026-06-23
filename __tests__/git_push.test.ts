@@ -58,8 +58,8 @@ describe('git_push.ts', () => {
       gitPush(
         '/tmp/repo',
         'https://github.com/owner/repo.git',
-        'Release v1.0.0',
-        'token'
+        'token',
+        'Release v1.0.0'
       )
     ).resolves.toBe('done!')
 
@@ -77,8 +77,8 @@ describe('git_push.ts', () => {
       gitPush(
         '/tmp/repo',
         'https://github.com/owner/repo.git',
-        'Release v1.0.0',
-        'token'
+        'token',
+        'Release v1.0.0'
       )
     ).resolves.toBe('done!')
 
@@ -142,12 +142,7 @@ describe('git_push.ts', () => {
     mockedSpawn.mockReturnValue(createChild(0, ' M deployment.yaml\n'))
 
     await expect(
-      gitPush(
-        '/tmp/repo',
-        'https://github.com/owner/repo.git',
-        undefined,
-        'token'
-      )
+      gitPush('/tmp/repo', 'https://github.com/owner/repo.git', 'token')
     ).resolves.toBe('done!')
 
     expect(mockedSpawn).toHaveBeenNthCalledWith(
@@ -179,8 +174,8 @@ describe('git_push.ts', () => {
       gitPush(
         '/tmp/repo',
         'https://github.com/owner/repo.git',
-        'Release v1.0.0',
-        'token'
+        'token',
+        'Release v1.0.0'
       )
     ).rejects.toThrow(
       'git -c user.name=github-actions[bot] -c user.email=github-actions[bot]@users.noreply.github.com commit -m Release v1.0.0 exited with code 1: commit failed'
@@ -196,8 +191,8 @@ describe('git_push.ts', () => {
       gitPush(
         '/tmp/repo',
         'https://github.com/owner/repo.git',
-        'Release v1.0.0',
-        'token'
+        'token',
+        'Release v1.0.0'
       )
     ).rejects.toThrow('spawn failed')
   })
@@ -209,8 +204,8 @@ describe('git_push.ts', () => {
     await gitPush(
       '/tmp/repo',
       'https://github.com/owner/repo.git',
-      'Release v1.0.0',
-      'token'
+      'token',
+      'Release v1.0.0'
     )
 
     expect(mockedSpawn).toHaveBeenCalledWith('git', ['config', '--list'], {

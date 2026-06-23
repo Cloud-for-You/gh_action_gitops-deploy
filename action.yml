@@ -64,6 +64,12 @@ inputs:
       true.
     required: false
     default: 'false'
+  message:
+    description:
+      The commit message to use when pushing the release to the GitOps
+      repository.
+    required: false
+    default: 'Release application'
 
 # Define your outputs here.
 outputs:

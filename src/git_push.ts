@@ -4,15 +4,15 @@ import { runGit } from './git_run.js'
  * Push changes to the cloned GitHub repository.
  *
  * @param path The path directory where repository is located.
- * @param message The commit message.
  * @param token The GitHub token for authentication (optional).
+ * @param message The commit message.
  * @returns Resolves with 'done!' after the push is over.
  */
 export async function gitPush(
   path: string,
   repositoryUrl: string,
-  message = 'Update deployment file',
-  token: string
+  token: string,
+  message = 'Update deployment file'
 ): Promise<string> {
   const status = await runGit(path, ['status', '--porcelain'])
   if (status.trim() === '') {

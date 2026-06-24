@@ -26,6 +26,7 @@ konkrétních deployment souborů a values v daném klíči.
 | `github_enterprise_url` | URL GitHub Enterprise instance (např. `https://github.mycompany.com`)              | Ne      | -               |
 | `push`                  | Nastavit na `true` pro přímý push do cílové větve                                  | Ne      | `false`         |
 | `pull_request`          | Nastavit na `true` pro vytvoření pull requestu (pouze když `push` je `false`)      | Ne      | `false`         |
+| `message`               | Zpráva pro commit/pull request (např. `Update version to v1.2.3`)                  | Ne      | -               |
 
 ## Výstupy
 
